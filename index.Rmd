@@ -1,0 +1,143 @@
+---
+title: "PML2016"
+author: "Stenio Fernandes"
+date: "20 de janeiro de 2016"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r, echo=FALSE}
+cat("\nPML Assignment - Final Project - Stenio Fernandes - 17-Jan-2016")
+cat("\nLoading local data...\n")
+PMLtraining <- read.csv("pml-training.csv", header = TRUE, na.strings=c("", "NA"))
+PMLtesting <- read.csv("pml-testing.csv", header = TRUE, na.strings=c("", "NA"))
+
+cat("\nMaking data frames...\n")
+dfPMLtraining <- data.frame(PMLtraining)
+dfPMLtesting <- data.frame(PMLtesting)
+
+cat("\nLoading libraries...\n")
+library(caret)
+library(rpart)
+library(AppliedPredictiveModeling)
+library(mlbench)
+library(randomForest)
+library(C50)
+library(MASS)
+
+cat("\nRemoving features with NA...\n")
+dfPMLtraining <- dfPMLtraining[, ! apply( dfPMLtraining , 2 , function(x) any(is.na(x)) ) ]
+dfPMLtesting <- dfPMLtesting[, ! apply( dfPMLtesting , 2 , function(x) any(is.na(x)) ) ]
+
+cat("\nAfter EDA on the data...\n")
+cat("\nExcluding other features manually...\n")
+dfPMLtraining <- dfPMLtraining[, c(8:60)] # features 1:7 excluded manually
+dfPMLtesting <- dfPMLtesting[, c(8:60)] # features 1:7 excluded manually
+
+cat("\nSplitting data: PMLtraining 3/4 for training and testing\n")
+cat("Use PMLtesting for validation...\n")
+inTrain <- createDataPartition(y=dfPMLtraining$classe, p = 3/4, list = TRUE)[[1]]
+
+cat("\nRemoving some additional features not useful for the model...\n")
+cat("\nPredictors that result in absolute pairwise correlations greater than 0.80...\n")
+cat("They will be removed using the findCorrelation function...\n")
+
+# do not take into account the 'classe' feature in the correlation analysis
+fcor <- cor(dfPMLtraining[,c(1:52)]) 
+highCorr <- findCorrelation(fcor, 0.8)
+cat("Index of highly correlated features: ", highCorr, "\n")
+
+dfPMLtraining <- dfPMLtraining[, -highCorr[1:(length(highCorr)-1)]]
+dfPMLtesting <- dfPMLtesting[, -highCorr[1:(length(highCorr)-1)]]
+
+training <- dfPMLtraining[inTrain,]
+testing <- dfPMLtraining[-inTrain,]
+
+DATA_TO_PREDICT <- OutOfSampleTesting <- dfPMLtesting[,1:40]
+ 
+# for large samples, increase bootstrap replications
+# bootstrap = 200
+# keep default cross-validation parameters
+bootControl <- trainControl(number = 200) 
+
+cat("Applying different ML methods...\n")
+# predict
+# check accuracy
+
+# general steps
+
+#1 - build individual models on training data
+#2 - get predictions of each model on testing data
+#2b - check accuracy
+#3 - build a dataframe with the combined predictions+true output from testing data
+#4 - train new COMBINED model into a new model with the combined DF
+#5 - new round of predictions: ORIGINAL models with DATA with UNKNOWN output
+#6 - DF combining new predictions
+#7 - predict COMBINED model (step #5) with the DF from #6
+
+# models that make a good candidate for an ensemble: 
+# their predicitons are fairly un-correlated, 
+# but their overall accuracy is similar
+
+### STEP 1
+cat("Training a Random Forest model...\n")
+mfit2 <- train(classe~., method="rf", data=training) 
+cat("Training a C5.0 model...\n")
+mfit3 <- train(classe ~ ., method = "C5.0", data=training)
+
+### STEP 2
+pred2 <- predict(mfit2, newdata = testing)
+pred3 <- predict(mfit3, newdata = testing)
+
+acc2 <- confusionMatrix(testing$classe, pred2)$overall[1]
+acc3 <- confusionMatrix(testing$classe, pred3)$overall[1]
+
+cat("Combining models...\n")
+dfpred23 <- data.frame(pred2, pred3, clas = testing$classe)
+mfit23 <- train(clas ~ ., data = dfpred23, method="rf")
+pred23 <- predict(mfit23, dfpred23)
+
+acc23 <- confusionMatrix(testing$classe, pred23)$overall[1]
+
+cat("Individual model accuracies:\n", c("\nmfit2", acc2, "\nmfit3", acc3))
+cat("Combined model accuracy:", acc23, "\n")
+
+cat("Predicting unknown data with the models...\n")
+val2 <- predict(mfit2, newdata = DATA_TO_PREDICT)
+val3 <- predict(mfit3, newdata = DATA_TO_PREDICT)
+
+# writing results function
+
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("test_problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+#5 - new round of predictions: ORIGINAL models with DATA with UNKNOWN output
+
+if (abs(acc23-acc2)/acc23 > 0.05 | (abs(acc23-acc3)/acc23 > 0.05))  {
+  cat("Models precision are similar...picking model 2... Random Forest\n")
+  cat("\nWriting files...\n")
+  pml_write_files(validation2)
+} else {
+  dfval23 <- data.frame(val2, val3)
+  colnames(dfval23) <- c("val2", "val3")
+  #6 - DF combining new predictions
+  #7 - predict COMBINED model (step #5) with the DF from #6
+  cat("Accurary of the combined model is better...picking combined model...\n")
+  cat("\nWriting files...\n")
+  stackedval23 <- predict(mfit23, dfval23)
+  pml_write_files(stackedval23)
+}
+
+
+
+
+ 
+ 
+```
+
