@@ -37,8 +37,7 @@ color: inherit;
 background-color: rgba(0, 0, 0, 0.04);
 }
 img { max-width:100%; height: auto; }
-</style>
-</head>
+</style></head>
 <body>
 <div class="container-fluid main-container">
 <div id="header">
@@ -48,7 +47,9 @@ links:<br>
 http://steniofernandes.github.io/pml2016/<br>
 https://github.com/steniofernandes/pml2016
 <h4 class="author"><em>Stenio Fernandes</em></h4>
-<h4 class="date"><em>20 de janeiro de 2016</em></h4>
+<h4 class="date"><em>20 de janeiro de 2016</em></h4><br>General View of the algorithm<br><br>1) Data preparation:<br>1.1 - loading csv<br>1.2 - making data frames<br>1.3 - loading necessary libraries<br><br>2) Clean data: &nbsp;<br>2.1 - removing features with NA<br>2.2 - features 1:7 excluded, since they are not useful<br><br>3) &nbsp;Splitting data<br>3.1 - using 3/4 rule for splitting training and testing data<br>3.2 - find features that are highly correlated &nbsp;(cor &gt; 0.8), using the findCorrelation function<br>3.3 - leaving only one feature from the correlation analysis results<br><br>4) Applying different ML methods<br>4.1 - after some testing, the decision was to apply Random Forest and C5.0 algorithms<br>4.2 - as dataset is large, the number of bootstrap iterations is set as 200; crossvalidation is left as default<br>4.3
+- combination (ensemble) of both methods MIGHT be used if accuracy of
+the combined method is at least 5% better than the individual ones.<br>4.3.a - Note: accuracy of both individual and combined methods is above 99%.&nbsp;&nbsp; &nbsp;<br><br>5 - wiriting results in .txt files 
 </div>
 </div>
 <pre class="r"><code>cat("\nPML Assignment - Final Project - Stenio Fernandes - 17-Jan-2016")</code></pre>
